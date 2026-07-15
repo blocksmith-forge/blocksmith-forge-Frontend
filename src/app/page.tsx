@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { connectWallet, getPublicKey, signTransaction } from '../lib/freighter';
+import { getAllPools, getTotalVolume24h, getPoolReserves, recordSwap } from '../lib/api';
+import { ArrowDown, TrendingUp, Droplets } from 'lucide-react';
 
 interface Token {
   symbol: string;
@@ -23,6 +25,9 @@ export default function Home() {
   const [tokenB, setTokenB] = useState('USDC');
   const [tokenAAmount, setTokenAAmount] = useState('');
   const [tokenBAmount, setTokenBAmount] = useState('');
+  const [totalVolume24h, setTotalVolume24h] = useState<number>(0);
+  const [totalLiquidity, setTotalLiquidity] = useState<number>(0);
+  const [lpTokenSupply, setLpTokenSupply] = useState<number>(0);
 
   const tokens: Token[] = [
     { symbol: 'XLM', name: 'Stellar Lumens', balance: '1000.00' },
@@ -33,7 +38,25 @@ export default function Home() {
 
   useEffect(() => {
     checkWalletConnection();
+    fetchPoolStats();
   }, []);
+
+  const fetchPoolStats = async () => {
+    try {
+      const volumeData = await getTotalVolume24h();
+      setTotalVolume24h(volumeData.totalVolume24h);
+
+      const poolsData = await getAllPools();
+      if (poolsData.pools.length > 0) {
+        const totalLiq = poolsData.pools.reduce((sum, pool) => sum + pool.total_liquidity, 0);
+        const totalLP = poolsData.pools.reduce((sum, pool) => sum + pool.lp_token_supply, 0);
+        setTotalLiquidity(totalLiq);
+        setLpTokenSupply(totalLP);
+      }
+    } catch (error) {
+      console.error('Error fetching pool stats:', error);
+    }
+  };
 
   const checkWalletConnection = async () => {
     try {
@@ -379,17 +402,17 @@ export default function Home() {
               <div className="space-y-4">
                 <div className="bg-white/5 rounded-xl p-4">
                   <p className="text-gray-400 text-sm">24h Volume</p>
-                  <p className="text-2xl font-bold text-white">$250,000</p>
+                  <p className="text-2xl font-bold text-white">${totalVolume24h.toLocaleString()}</p>
                 </div>
                 
                 <div className="bg-white/5 rounded-xl p-4">
                   <p className="text-gray-400 text-sm">Total Liquidity</p>
-                  <p className="text-2xl font-bold text-white">$1,500,000</p>
+                  <p className="text-2xl font-bold text-white">${totalLiquidity.toLocaleString()}</p>
                 </div>
                 
                 <div className="bg-white/5 rounded-xl p-4">
                   <p className="text-gray-400 text-sm">LP Token Supply</p>
-                  <p className="text-2xl font-bold text-white">707,106</p>
+                  <p className="text-2xl font-bold text-white">{lpTokenSupply.toLocaleString()}</p>
                 </div>
                 
                 <div className="bg-white/5 rounded-xl p-4">
